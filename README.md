@@ -1,107 +1,126 @@
-<<<<<<< HEAD
-# Full-Stack Patch Exercise
+# Full-Stack Task Tracker — Patch Exercise
 
-A small, intentionally imperfect task tracker. Your job is to review the codebase, identify the highest-value issues, and submit a focused patch.
+A focused debugging and improvement patch for a small full-stack Task
+Tracker application built with React, Spring Boot, and H2.
 
----
+## Tech Stack
 
-## Why this exercise
+- Frontend: React 18, Vite 5, JavaScript
+- Backend: Java 17, Spring Boot 3.2, Spring Data JPA, Maven
+- Database: H2 in-memory database
+- SQL: H2 SQL and Oracle PL/SQL reference artifact
 
-We want to see how you improve an existing codebase under a realistic timebox — not how much boilerplate you can generate. The strongest submissions are small, focused diffs paired with clear reasoning and genuine understanding.
+## Project Overview
 
-We care about:
+This project was provided as a Full-Stack Software Engineer technical
+exercise. The application contains intentional issues across the
+frontend, backend, and SQL layers.
 
-- **Judgment** — what you fix first and why
-- **Debugging skill** — across frontend, backend, and SQL layers
-- **Communication** — can you explain tradeoffs clearly?
-- **Understanding** — do you actually understand what you changed and why?
+The goal of this submission is to identify and fix the highest-value
+issues while keeping the patch focused and avoiding an unnecessary
+rewrite.
 
-We assume all candidates are using modern AI tools (ChatGPT, Claude, Copilot, etc.) — that is completely fine. What matters is that you understand the bugs you find, the fixes you apply, and can explain them in your own words and handwriting.
+## Key Fixes
 
----
+### 1. SQL AND/OR Precedence
 
-## Tech stack
+The task search query did not group the title and description conditions
+correctly. Because SQL evaluates `AND` before `OR`, archived tasks could
+appear in some search results and the status filter was not consistently
+applied.
 
-| Layer    | Technology                      |
-| -------- | ------------------------------- |
-| Frontend | React 18 + Vite 5 (JavaScript) |
-| Backend  | Spring Boot 3.2 + Java 17      |
-| Database | H2 (in-memory, zero setup)     |
-| SQL ref  | Oracle PL/SQL artifact in `db/` |
+**Fix:** Grouped the title/description search conditions with
+parentheses so archived and status filters are applied correctly. The
+same fix was applied in the repository query, `db/queries/search_tasks.sql`,
+and both Oracle queries.
 
-The Oracle PL/SQL file in `db/oracle/` is a reference artifact — it mirrors the app's query logic but does not run locally. You are welcome to review and improve it.
+### 2. Removed Artificial API Delay
 
----
+The backend used `Thread.sleep()` to simulate query complexity. This
+blocked the request thread and unnecessarily slowed API responses.
 
-## Timebox
+**Fix:** Removed the artificial delay and unnecessary complexity
+calculation.
 
-- **Spend no more than 90 minutes** (including setup, fixes, and write-up).
-- AI tools are expected and completely fine to use.
-- Judgment, clarity, and tradeoffs matter more than completeness.
-- You are **not** expected to find or fix everything.
+### 3. Invalid Status Handling
 
----
+An invalid status could cause `IllegalArgumentException` and result in
+an internal server error.
 
-## What you are expected to do
+**Fix:** Validate the status value and return a clear `400 Bad Request`
+response.
 
-1. **Run the app locally** (see setup instructions below — install dependencies first).
-2. **Explore the codebase** — frontend, backend, SQL, and the Oracle artifact.
-3. **Identify and fix** the highest-value issues you can find within the timebox.
-4. **Keep changes focused** — a small, high-quality diff beats a large rewrite.
-5. **Do not rewrite the app** — this is a patch exercise, not a rebuild.
-6. **Add a `NOTES.md` file** at the project root (see below).
-7. **Add handwritten explanations** — photographed and included in your repo (see below).
+### 4. Pagination Validation
 
----
+Invalid page or page-size values (for example `page=0` or a negative
+`pageSize`) caused an internal server error.
 
-## Handwritten explanations (required)
+**Fix:** Validate pagination parameters and return `400 Bad Request` for
+invalid input. `pageSize` is capped at 100.
 
-For each bug you found and fixed, write an explanation **by hand on paper** covering:
+### 5. Stale Responses (Race Condition)
 
-- Where the bug is (file, line, layer)
-- How you discovered it
-- What the root cause is
-- How you fixed it and why you chose that approach
+Every search change started a new request, and an older response could
+arrive after a newer one and overwrite the fresh results.
 
-Photograph or scan your handwritten notes and add the images to a `handwritten/` folder at the project root. Clear, legible handwriting is sufficient — we are not judging penmanship. We are verifying that you genuinely understand what you fixed and can explain it without relying on AI-generated text.
+**Fix:** The data-fetching hook ignores responses from superseded
+requests, so stale data cannot replace newer results.
 
-**Submissions without handwritten explanations will be considered incomplete.**
+### 6. Frontend Loading and Error State
 
----
+When an API request failed, loading could remain active and an old error
+could remain visible.
 
-## What to include in NOTES.md
+**Fix:** Clear the previous error when a request starts and use
+`finally()` to always reset the loading state.
 
-Write a short file (under 300 words) covering:
+### 7. Search/Filter Pagination Reset
 
-- **Summary of changes** — a brief overview of what you fixed (detailed explanations go in the handwritten notes)
-- **What you chose not to change** and why
-- **The biggest remaining risk** you see in this codebase
-- **What tools/AI you used** and how (e.g., "used Claude to draft the debounce hook, then adjusted the delay")
+Changing search or status while on a later page could request a page
+that no longer existed.
 
-Be honest and specific. We value self-awareness over perfection.
+**Fix:** Reset pagination to page 1 whenever the search query or status
+filter changes.
 
----
+## Project Structure
 
-## Local setup
+```text
+superrdev-patch-exercise/
+├── backend/
+├── frontend/
+├── db/
+├── handwritten/
+└── README.md
+```
+
+## How to Run
 
 ### Prerequisites
 
-- **Java 17+** (run `java --version` to check)
-- **Node.js 18+** (run `node --version` to check)
-- No Docker required. No external database required.
+- Java 17+
+- Node.js 18+
+- Git
+- No Docker required
+- No external database required
 
 ### Backend
 
+Windows:
+
 ```bash
 cd backend
-./mvnw spring-boot:run
+mvnw.cmd spring-boot:run
 ```
 
-On Windows, use `mvnw.cmd spring-boot:run` instead.
+Backend:
 
-The API starts on **http://localhost:8080**.
+```text
+http://localhost:8080
+```
 
 ### Frontend
+
+Open another terminal:
 
 ```bash
 cd frontend
@@ -109,122 +128,100 @@ npm install
 npm run dev
 ```
 
-The app starts on **http://localhost:5173**.
+Frontend:
 
-The Vite dev server proxies `/api/*` requests to the backend automatically.
+```text
+http://localhost:5173
+```
 
----
+The Vite development server proxies `/api/*` requests to the backend.
 
-## Run instructions
+## Useful API Requests
 
-1. Start the backend first (port 8080).
-2. Start the frontend second (port 5173).
-3. Open **http://localhost:5173** in your browser.
-4. To stop either service, press `Ctrl+C` in its terminal.
+Get tasks:
 
-### Useful URLs
+```text
+GET /api/tasks
+```
 
-| URL                                        | Description           |
-| ------------------------------------------ | --------------------- |
-| http://localhost:5173                       | App UI                |
-| http://localhost:8080/api/tasks             | API — all tasks       |
-| http://localhost:8080/api/tasks?q=api       | API — search by term  |
-| http://localhost:8080/api/tasks?status=OPEN | API — filter by status|
-| http://localhost:8080/h2-console            | H2 database console   |
+Search:
 
-H2 console connection: JDBC URL `jdbc:h2:mem:taskdb`, username `sa`, no password.
+```text
+GET /api/tasks?q=api
+```
 
----
+Filter by status:
 
-## Quick smoke test
+```text
+GET /api/tasks?status=OPEN
+```
 
-1. Open http://localhost:5173 — you should see a table of tasks.
-2. Type a search term (e.g., "api") — results should filter.
-3. Select a status from the dropdown — results should filter further.
-4. Try the API directly:
-   ```bash
-   curl "http://localhost:8080/api/tasks?q=api&page=1&pageSize=5"
-   ```
+Search with pagination:
 
----
+```text
+GET /api/tasks?q=api&page=1&pageSize=5
+```
 
-## Submission instructions
+## H2 Console
 
-1. Click **"Use this template"** on the GitHub repo page to create your own copy (do **not** fork — use the template button).
-2. Keep the folder structure and startup commands unchanged.
-3. Make your changes and commit them.
-4. Add your `NOTES.md` at the project root.
-5. Add your handwritten explanation photos in a `handwritten/` folder at the project root.
-6. Push to GitHub.
-7. **Ensure the app still runs** with the same setup commands before submitting.
-8. Share the **repo URL** with us.
+```text
+http://localhost:8080/h2-console
+```
 
----
+Connection:
 
-## Submission timing
+```text
+JDBC URL: jdbc:h2:mem:taskdb
+Username: sa
+Password: leave blank
+```
 
-- **Earlier complete submissions are prioritized** in our review queue and interview scheduling.
-- The ideal latest submission time is **within 48 hours** of receiving the assignment.
-- Late submissions may be deprioritized in scheduling.
+## Testing
 
----
+The following areas were checked:
 
-## Submission checklist
+- Task search
+- Status filtering
+- Combined search and status filtering
+- Archived task exclusion
+- Pagination
+- Invalid pagination input
+- Invalid status input
+- Frontend loading state
+- Frontend error handling
+- Search/filter pagination reset
+- Backend startup
+- Frontend startup
 
-Before sharing your repo, verify:
+## Remaining Risk
 
-- [ ] App runs with the original setup commands (`./mvnw spring-boot:run` and `npm run dev`)
-- [ ] `NOTES.md` exists at the project root
-- [ ] `handwritten/` folder exists with photos of your handwritten explanations
-- [ ] Handwritten notes cover each bug you fixed (location, discovery, root cause, fix approach)
-- [ ] Code changes are committed and pushed
-- [ ] You have not accidentally included `node_modules/`, `target/`, or other build artifacts
+The backend currently retrieves all matching records and performs
+pagination in Java. This is acceptable for the small exercise dataset,
+but a production application with a large dataset should use
+database-level pagination with Spring Data `Pageable` or SQL
+`LIMIT/OFFSET`.
 
----
+Other possible future improvements include debounced search, structured
+logging, escaping `LIKE` wildcards, automated integration tests, and
+richer API error responses.
 
-## Interview follow-up
+## AI Usage
 
-After we review your submission, we will schedule a short call. Be ready to discuss:
+AI tools were used as development assistance for code review,
+identifying potential bugs, and discussing possible fixes. All applied
+changes were reviewed and understood before inclusion. The
+implementation was kept focused on the highest-value issues within the
+exercise timebox.
 
-- What you fixed first and why you prioritized it
-- What you chose not to fix
-- Any subtle issues you found or suspected
-- Any future risks you noticed in the codebase
-- Your handwritten explanations — we may ask you to walk through them
-- How you used AI/tools — where you accepted suggestions and where you overrode them
-- How you would approach the issues differently with more time
+## Submission
 
----
+This repository contains:
 
-## Troubleshooting
+- Patched full-stack application
+- Focused bug fixes
 
-**Backend won't start**
-- Ensure Java 17+ is installed: `java --version`
-- On macOS, if you get `Permission denied`, run: `chmod +x backend/mvnw`
-- On Windows, use `mvnw.cmd` instead of `./mvnw`
-- Check that port 8080 is free: `lsof -i :8080` (macOS/Linux) or `netstat -ano | findstr :8080` (Windows)
+- `handwritten/` handwritten explanation images
 
-**Frontend won't start**
-- Ensure Node 18+ is installed: `node --version`
-- Run `npm install` before `npm run dev`
-- Check that port 5173 is free
+Repository:
 
-**API returns errors in the browser console**
-- Make sure the backend is running before the frontend
-- The Vite proxy forwards `/api/*` to `localhost:8080` — if the backend is down, requests will fail
-
-**H2 console won't connect**
-- Use JDBC URL: `jdbc:h2:mem:taskdb`
-- Username: `sa`, password: (leave blank)
-- The console is only available while the backend is running
-
----
-
-## Scope guidance
-
-This codebase has issues at multiple levels — some obvious, some subtle, some that are really future risks rather than current bugs. **You are not expected to find or fix everything.** Focus on what you believe is highest value, explain your reasoning, and stop when the timebox is up.
-
-Good luck.
-=======
-# superrdev-patch-exercise
->>>>>>> 9b3ff376f45286f88084d606638199dc45250e67
+`https://github.com/satyajitlangote/superrdev-patch-exercise`
